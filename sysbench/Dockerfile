@@ -14,5 +14,3 @@ ENV PATH="/home/.venv/bin:$PATH"
 ENV PYTHONPATH="/home/.venv/lib/python3.12/site-packages"
 
 COPY . .
-
-CMD ["python", "runner.py"]
