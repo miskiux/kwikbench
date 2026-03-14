@@ -75,4 +75,9 @@ class BaseSysbench(ABC):
             app = cls(ctx)
             app.run_task()
         except Exception:
-            exit(1)
+            import logging
+            import traceback
+            import sys
+
+            logging.error(traceback.format_exc())
+            sys.exit(1)

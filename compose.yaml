@@ -12,13 +12,35 @@ services:
     restart: unless-stopped
     networks: [syspgnet]
     ports:
-      - "5435:5432"
+      - "543:5432"
     environment:
       POSTGRES_DB: ${DB_NAME:-postgres}
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-welcome123}
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./sysbench/config/sql/init-pgss.sql:/docker-entrypoint-initdb.d/init-pgss.sql
+    # temp 
+    command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-system:
+    image: postgres:17
+    restart: unless-stopped
+    networks: [syspgnet]
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: ${DB_NAME:-postgres}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-welcome123}
+    volumes:
+      - system-pgdata:/var/lib/postgresql/data
+      - ./sysbench/config/sql/init-sysb.sql:/docker-entrypoint-initdb.d/init-sysb.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-postgres}"]
       interval: 5s
@@ -42,3 +64,24 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  sysbench-run:
+    build:
+      context: ./sysbench
+      dockerfile: Dockerfile
+    image: syspg/sysbench:latest
+    networks: [syspgnet]
+    environment: &env
+      - DB_NAME=${DB_NAME:-postgres}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-welcome123}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+    volumes:
+      - ./config/params:/params
+    command: ["python", "run.py", "-t", "oltp_read_write"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      sysbench-prepare:
+        condition: service_completed_successfully

@@ -8,4 +8,5 @@ db_port = os.getenv("DB_PORT")
 db_host = os.getenv("DB_HOST")
 
 # Construct the connection URL using URL class
-db_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+db_dsn = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+system_db_dsn = os.getenv("SYSTEM_DB_DSN")
