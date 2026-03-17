@@ -45,16 +45,18 @@ class BaseSysbench(ABC):
         Executes a sysbench command as a subprocess.
         """
         cmd = ["sysbench"] + self.flags + [self.test_name, command.value]
-        self.log.info(f"sysbench command - {command.value}. test suite - {self.test_name}")
         
         try:
-            subprocess.run(
+            result = subprocess.run(
                 cmd,
                 text=True, 
-                check=True
+                check=True,
+                capture_output=True
             )
+
+            return result.stdout.strip()
         except subprocess.CalledProcessError as e:
-            self.log.error(f"sysbench command - {command.value} failed. error - {e.stderr.strip()}")
+            self.log.error(f"exec sysbench failed {e.stderr.strip()}")
             raise
 
     @abstractmethod
