@@ -47,7 +47,7 @@ class Run(BaseSysbench):
                 LIMIT 20;
             """).fetchall()
 
-        sb_stdout = {
+        sysb_stdout = {
             "tps_count": self.match(r"transactions:\s+(\d+)", stdout),
             "tps_rate": self.match(r"transactions:.*?\((\d+\.\d+) per sec\.\)", stdout),
             "qps_count": self.match(r"queries:\s+(\d+)", stdout),
@@ -82,20 +82,15 @@ class Run(BaseSysbench):
         }
 
         it = iter(re.split(r"\[\s*(\d+)s\s*\]", stdout)[1:])
-        sb_timeline = [
+        sysb_timeline = [
             {"second": int(ts), "data": data.strip()} for ts, data in zip(it, it)
         ]
 
-        pg_config = self.ctx.db.query(
-            "SELECT pg_read_file(%s)", "/var/lib/postgresql/data/postgresql.conf"
-        ).fetchone()
-
         return {
-            "sb_stdout": sb_stdout,
-            "sb_timeline": sb_timeline,
+            "sysb_stdout": sysb_stdout,
+            "sysb_timeline": sysb_timeline,
             "stat_statements": stat_statements,
-            "config": pg_config,
-            "raw_stdout": stdout,
+            "raw_output": stdout,
         }
 
     def match(self, pattern, content):

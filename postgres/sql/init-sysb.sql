@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS public.syssb (
+CREATE TABLE IF NOT EXISTS public.sysb (
     id SERIAL PRIMARY KEY,
 
     -- environment
