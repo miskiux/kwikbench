@@ -15,15 +15,16 @@ networks:
     driver: bridge
 
 volumes:               
-  postgres-data:
-  system-data:
+  pgdata:
+  systemdata:
+  pgadmindata:
+  grafanadata:
+  prometheusdata:
 
 services:
   postgres:
     container_name: postgres
-    build:
-      context: ./postgres
-      dockerfile: Dockerfile
+    image: postgres:17
     restart: unless-stopped
     networks: [default]
     ports:
@@ -31,12 +32,12 @@ services:
     environment:
       <<: *postgres-env
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
       - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf
       - ./postgres/sql/setup.sql:/docker-entrypoint-initdb.d/setup.sql
     command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -50,39 +51,14 @@ services:
     environment:
       <<: *postgres-env
     volumes:
-      - system-data:/var/lib/postgresql/data
+      - systemdata:/var/lib/postgresql/data
       - ./postgres/sql/init-sysb.sql:/docker-entrypoint-initdb.d/init-sysb.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  pmm-server:
-    image: percona/pmm-server:2
-    container_name: pmm-server
-    networks: [default]
-    ports:
-      - "8080:80"
-
-  pmm-client:
-    image: percona/pmm-client:2
-    container_name: pmm-client
-    networks: [default]
-    environment:
-      <<: *db-env
-      PMM_SERVER: ${PMM_SERVER:-pmm-server}
-      PMM_USER: ${PMM_USER:-admin}
-      PMM_PASS: ${PMM_PASS:-admin}
-    entrypoint: >
-      /bin/sh -c "
-      sleep 10;
-      pmm-admin config --server-address=$$PMM_SERVER:80 --server-user=$$PMM_USER --server-password=$$PMM_PASS;
-      pmm-admin add postgresql --username=$$DB_USER --password=$$DB_PASSWORD --host=$$DB_HOST --query-source=pgstatmonitor;
-      pmm-agent"
-    depends_on:
-      - postgres
-      - pmm-server
   sysbench-prepare:
     container_name: sysbench-prepare
     build:
@@ -113,7 +89,69 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      pmm-client:
-        condition: service_started
       sysbench-prepare:
         condition: service_completed_successfully
+
+  postgres_exporter:
+    container_name: postgres_exporter
+    image: quay.io/prometheuscommunity/postgres-exporter:latest
+    restart: unless-stopped
+    networks: [default]
+    ports:
+      - "9187:9187"
+    environment:
+      - DATA_SOURCE_NAME=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable
+      - PG_EXPORTER_AUTO_DISCOVER_DATABASES=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    networks: [default]
+    ports:
+      - "9090:9090"
+    volumes:
+     - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+     - prometheusdata:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=1d'
+      - '--web.enable-lifecycle'
+    depends_on:
+      - postgres_exporter
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    networks: [default]
+    user: "0"
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+    depends_on:
+      - prometheus
+
+  pgadmin:  
+    container_name: pgadmin    
+    image: dpage/pgadmin4:9.11.0
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@example.com
+      - PGADMIN_DEFAULT_PASSWORD=changeme
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmindata:/var/lib/pgadmin
+    networks: [default]
+    depends_on:
+      postgres:
+        condition: service_healthy

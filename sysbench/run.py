@@ -8,7 +8,7 @@ from base import BaseSysbench, Command
 
 class Run(BaseSysbench):
     def run_task(self):
-        output_dir = "/stdout"
+        output_dir = "./stdout"
         file_name = (
             f"{self.test_name}_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.json"
         )
@@ -23,7 +23,7 @@ class Run(BaseSysbench):
                 json.dump({**stats}, f, indent=4, default=str)
 
             self.log.info(
-                "Output path:%s",
+                "output_path:%s",
                 output_path,
             )
 

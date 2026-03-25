@@ -1,0 +1,9 @@
+apiVersion: 1
+
+providers:
+  - name: "Syspg Dashboards"
+    orgId: 1
+    folder: "Syspg"
+    type: file
+    options:
+      path: /etc/grafana/provisioning/dashboards

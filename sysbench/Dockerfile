@@ -9,8 +9,8 @@ COPY pyproject.toml uv.lock ./
 
 RUN uv sync --frozen --no-install-project
 
-ENV VIRTUAL_ENV=/home/.venv
-ENV PATH="/home/.venv/bin:$PATH"
-ENV PYTHONPATH="/home/.venv/lib/python3.12/site-packages"
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONPATH="/app/.venv/lib/python3.12/site-packages"
 
 COPY . .
