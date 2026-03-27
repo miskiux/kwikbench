@@ -27,19 +27,26 @@ class BaseSysbench(ABC):
         p = self.params
         t = self.test_name
 
+        self.meta = {
+            "test": t,
+            "threads": p.get(t, "threads", "8"),
+            "tables": p.get(t, "tables", "1"),
+            "table-size": p.get(t, "table_size", "10000"),
+            "time": p.get(t, "time", "60"),
+            "report-interval": p.get(t, "report_interval", "1"),
+        }
+
         self.flags = [
-            # infrastructure (env)
             f"--pgsql-host={db_host}",
             f"--pgsql-user={db_user}",
             f"--pgsql-password={db_password}",
             f"--pgsql-db={db_name}",
             "--db-driver=pgsql",
-            # test tuning (params volume with defaults)
-            f"--threads={p.get(t, 'threads', '8')}",
-            f"--tables={p.get(t, 'tables', '1')}",
-            f"--table-size={p.get(t, 'table_size', '10000')}",
-            f"--time={p.get(t, 'time', '60')}",
-            f"--report-interval={p.get(t, 'report_interval', '1')}",
+            f"--threads={self.meta['threads']}",
+            f"--tables={self.meta['tables']}",
+            f"--table-size={self.meta['table-size']}",
+            f"--time={self.meta['time']}",
+            f"--report-interval={self.meta['report-interval']}",
         ]
 
     def execute(self, command: Command) -> str:
@@ -48,43 +55,29 @@ class BaseSysbench(ABC):
         """
         cmd = ["sysbench"] + self.flags + [self.test_name, command.value]
         self.log.info(
-            "sysbench_execution_in_progress",
-            extra={
-                "command": command.value,
-                "test_name": self.test_name,
-                "status": "in_progress",
-            },
+            "sysbench_progress: %s",
+            {"status": "progress", **self.meta},
         )
 
         try:
             result = subprocess.run(cmd, text=True, check=True, capture_output=True)
             self.log.info(
-                "sysbench_execution_success",
-                extra={
-                    "command": command.value,
-                    "test_name": self.test_name,
-                    "status": "success",
-                },
+                "sysbench_complete: %s",
+                {"status": "complete"},
             )
 
             return result.stdout.strip()
-        except subprocess.CalledProcessError as e:
-            self.log.info(
-                "sysbench_execution_error",
-                extra={
-                    "command": command.value,
-                    "test_name": self.test_name,
-                    "status": "error",
-                    "err_msg": e,
-                },
+        except subprocess.CalledProcessError:
+            self.log.error(
+                "test_err: %s",
+                {"status": "error"},
             )
+
             raise
 
     @abstractmethod
     def run_task(self):
         """
-        Defines the execution policy for a specific benchmark lifecycle.
-
         Concrete implementations must orchestrate the sequence of setup,
         sysbench actions, and database maintenance required for the task.
         """

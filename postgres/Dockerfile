@@ -1,6 +1,5 @@
 FROM postgres:17
 
-# Install pg_stat_monitor from Percona repository (compatible with PG17)
 RUN apt-get update && apt-get install -y \
     wget gnupg2 gpgv lsb-release curl && \
     wget https://repo.percona.com/apt/percona-release_latest.generic_all.deb && \

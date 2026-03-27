@@ -24,7 +24,9 @@ volumes:
 services:
   postgres:
     container_name: postgres
-    image: postgres:17
+    build:
+      context: ./postgres
+      dockerfile: Dockerfile
     restart: unless-stopped
     networks: [default]
     ports:
@@ -99,6 +101,10 @@ services:
     networks: [default]
     ports:
       - "9187:9187"
+    volumes:
+      - ./monitoring/queries.yaml:/etc/postgres_exporter/queries.yaml
+    command:
+      - "--extend.query-path=/etc/postgres_exporter/queries.yaml"
     environment:
       - DATA_SOURCE_NAME=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable
       - PG_EXPORTER_AUTO_DISCOVER_DATABASES=true
@@ -114,7 +120,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-     - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+     - ./monitor/prometheus.yml:/etc/prometheus/prometheus.yml:ro
      - prometheusdata:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -136,8 +142,8 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafanadata:/var/lib/grafana
-      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitor/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitor/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
     depends_on:
       - prometheus
 

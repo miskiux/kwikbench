@@ -1,0 +1,30 @@
+query_stats:
+  query: |
+    SELECT 
+      m.queryid::text,
+      substring(m.query from 1 for 50) AS query,
+      m.total_exec_time::float,
+      m.min_exec_time::float,
+      m.max_exec_time::float,
+      m.mean_exec_time::float,
+      m.stddev_exec_time::float
+    FROM pg_stat_monitor m
+    WHERE m.bucket_start_time = (SELECT max(bucket_start_time) FROM pg_stat_monitor WHERE calls > 0)
+    AND m.calls > 0
+    ORDER BY m.total_exec_time DESC
+    LIMIT 10;
+  metrics:
+    - queryid:
+        usage: "LABEL"
+    - query:
+        usage: "LABEL"
+    - total_exec_time:
+        usage: "COUNTER"
+    - min_exec_time:
+        usage: "GAUGE"
+    - max_exec_time:
+        usage: "GAUGE"
+    - mean_exec_time:
+        usage: "GAUGE"
+    - stddev_exec_time:
+        usage: "GAUGE"
