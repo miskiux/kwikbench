@@ -20,7 +20,7 @@ services:
     build:
       context: ./
       dockerfile: Dockerfile
-    image: kwik-sys-b/sysbench-tool:latest
+    image: benchmark-system/sysbench-tool:latest
     networks: [ default ]
     volumes:
       - ./:/app
