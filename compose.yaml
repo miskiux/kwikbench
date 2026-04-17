@@ -9,62 +9,56 @@ networks:
   default:
     driver: bridge
 
-volumes:               
+volumes:
   pgdata:
   pgadmindata:
   grafanadata:
   prometheusdata:
 
 services:
+  sysbench-tool:
+    build:
+      context: ./sysbench
+      dockerfile: Dockerfile
+    image: syspg/sysbench:latest
+    networks: [ default ]
+    volumes:
+      - ./sysbench:/app
+    environment:
+      <<: *db-env
   postgres:
     container_name: postgres
     build:
       context: ./postgres
       dockerfile: Dockerfile
     restart: unless-stopped
-    networks: [default]
+    networks: [ default ]
     ports:
       - "${DB_PORT:-5432}:5432"
     environment:
-        POSTGRES_DB: ${DB_NAME:-postgres}
-        POSTGRES_USER: ${DB_USER:-postgres}
-        POSTGRES_PASSWORD: ${DB_PASSWORD:-welcome123}
+      POSTGRES_DB: ${DB_NAME:-postgres}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-welcome123}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf
-    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+    command: [ "postgres", "-c", "config_file=/etc/postgresql/postgresql.conf" ]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}" ]
       interval: 5s
       timeout: 5s
       retries: 5
-
   sysbench-prepare:
+    extends: sysbench-tool
     container_name: sysbench-prepare
-    build:
-      context: ./sysbench
-      dockerfile: Dockerfile
-    image: syspg/sysbench:latest
-    networks: [default]
-    environment:
-      <<: *db-env
-    volumes:
-      - ./sysbench:/app
     command: ["python", "prepare.py", "-t", "oltp_read_write"]
     depends_on:
       postgres:
         condition: service_healthy
+
   sysbench-run:
+    extends: sysbench-tool
     container_name: sysbench-run
-    build:
-      context: ./sysbench
-      dockerfile: Dockerfile
-    image: syspg/sysbench:latest
-    networks: [default]
-    environment:
-      <<: *db-env
-    volumes:
-      - ./sysbench:/app
     command: ["python", "run.py", "-t", "oltp_read_write"]
     depends_on:
       postgres:
@@ -76,7 +70,7 @@ services:
     container_name: postgres_exporter
     image: quay.io/prometheuscommunity/postgres-exporter:latest
     restart: unless-stopped
-    networks: [default]
+    networks: [ default ]
     ports:
       - "9187:9187"
     volumes:
@@ -94,12 +88,12 @@ services:
     container_name: prometheus
     image: prom/prometheus:latest
     restart: unless-stopped
-    networks: [default]
+    networks: [ default ]
     ports:
       - "9090:9090"
     volumes:
-     - ./metrics/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-     - prometheusdata:/prometheus
+      - ./metrics/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheusdata:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.retention.time=1d'
@@ -111,7 +105,7 @@ services:
     container_name: grafana
     image: grafana/grafana:latest
     restart: unless-stopped
-    networks: [default]
+    networks: [ default ]
     user: "0"
     ports:
       - "3000:3000"
@@ -125,8 +119,8 @@ services:
     depends_on:
       - prometheus
 
-  pgadmin:  
-    container_name: pgadmin    
+  pgadmin:
+    container_name: pgadmin
     image: dpage/pgadmin4:9.11.0
     environment:
       - PGADMIN_DEFAULT_EMAIL=admin@example.com
@@ -135,7 +129,7 @@ services:
       - "5050:80"
     volumes:
       - pgadmindata:/var/lib/pgadmin
-    networks: [default]
+    networks: [ default ]
     depends_on:
       postgres:
         condition: service_healthy
