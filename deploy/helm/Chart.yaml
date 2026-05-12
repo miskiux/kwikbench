@@ -1,8 +1,0 @@
-apiVersion: v2
-name: syspg
-type: application
-
-version: 1.0.0
-description: ""
-
-icon: ""

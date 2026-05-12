@@ -20,7 +20,7 @@ services:
     build:
       context: ./
       dockerfile: Dockerfile
-    image: chmark/sysbench-tool:latest
+    image: postgres-sysbench-tool/sysbench-tool:latest
     networks: [ default ]
     volumes:
       - ./:/app
@@ -114,8 +114,8 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafanadata:/var/lib/grafana
-      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
-      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+      - ./dashboard.json:/etc/grafana/provisioning/dashboards/dashboard.json:ro
     depends_on:
       - prometheus
 
